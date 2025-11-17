@@ -1,13 +1,12 @@
-const { db } = require("../configs/firebase"); // your firebase admin connection
+const { db } = require("../configs/firebase");
 
-// This function runs when Raspberry Pi sends POST /pet-detected
 exports.logPetDetection = async (req, res) => {
   try {
     const { deviceId, confidence } = req.body;
 
     await db.collection("petDetections").add({
       deviceId: deviceId || "raspberry",
-      confidence: confidence || null,
+      confidence: confidence ?? null,
       detectedAt: new Date().toISOString()
     });
 
