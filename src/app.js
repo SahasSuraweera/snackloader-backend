@@ -13,7 +13,7 @@ const deviceRoutes = require("./routes/deviceRoutes");
 app.use("/api/device", deviceRoutes);
 
 app.get("/", (req, res) => {
-  res.send("SnackLoader Backend Running on railway");
+  res.send("SnackLoader Backend Running");
 });
 
 app.listen(process.env.PORT || 5000, () =>
