@@ -1,10 +1,9 @@
-// src/controllers/deviceController.js
 const { db, admin } = require("../configs/firebase");
 
-const DEFAULT_DEVICE = "default";   // <--- single device mode
+const DEFAULT_DEVICE = "default"; // Single device mode
 
 module.exports = {
-  // Device registration disabled in single-device mode
+  // Registration removed — not needed in single-device mode
   registerDevice: async (req, res) => {
     return res.json({
       status: "single_device_mode",
@@ -12,14 +11,14 @@ module.exports = {
     });
   },
 
-  // Get status of the single device
+  // Get device status
   getDeviceStatus: async (req, res) => {
     try {
       const ref = db.collection("devices").doc(DEFAULT_DEVICE);
       const snap = await ref.get();
 
+      // If first time, create default doc
       if (!snap.exists) {
-        // Create default structure automatically
         await ref.set({
           deviceId: DEFAULT_DEVICE,
           online: false,
@@ -29,23 +28,24 @@ module.exports = {
           humidity: null,
           temperature: null,
           lastSeen: null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        return res.json((await ref.get()).data());
       }
 
-      return res.json(snap.data());
+      return res.json((await ref.get()).data());
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: err.message });
     }
   },
 
-  // Update cat/dog schedules/settings
+  // Update schedules/settings
   updateSettings: async (req, res) => {
     try {
+      const ref = db.collection("devices").doc(DEFAULT_DEVICE);
       const { cat, dog, autoFeedEnabled } = req.body;
 
-      await db.collection("devices").doc(DEFAULT_DEVICE).set(
+      await ref.set(
         {
           cat: cat || {},
           dog: dog || {},
@@ -65,10 +65,9 @@ module.exports = {
   // Manual feed CAT
   feedCat: async (req, res) => {
     try {
-      const { amount } = req.body;
       const ref = db.collection("devices").doc(DEFAULT_DEVICE);
-      const doc = await ref.get();
-      const data = doc.data();
+      const { amount } = req.body;
+      const data = (await ref.get()).data();
 
       if (data.dogFeedingActive)
         return res.status(400).json({ error: "Dog feeder active" });
@@ -102,10 +101,9 @@ module.exports = {
   // Manual feed DOG
   feedDog: async (req, res) => {
     try {
-      const { amount } = req.body;
       const ref = db.collection("devices").doc(DEFAULT_DEVICE);
-      const doc = await ref.get();
-      const data = doc.data();
+      const { amount } = req.body;
+      const data = (await ref.get()).data();
 
       if (data.catFeedingActive)
         return res.status(400).json({ error: "Cat feeder active" });
@@ -136,7 +134,7 @@ module.exports = {
     }
   },
 
-  // Device gets unprocessed commands
+  // Device polls commands
   getCommands: async (req, res) => {
     try {
       const ref = db
@@ -150,16 +148,14 @@ module.exports = {
         .limit(10)
         .get();
 
-      const cmds = q.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-      return res.json(cmds);
+      return res.json(q.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: err.message });
     }
   },
 
-  // Device confirms command was processed
+  // Mark command processed
   markCommandProcessed: async (req, res) => {
     try {
       const { cmdId } = req.params;
@@ -184,11 +180,10 @@ module.exports = {
     }
   },
 
-  // Device sends telemetry (weight/temp/humidity)
+  // Device sends telemetry
   postTelemetry: async (req, res) => {
     try {
       const { bowlWeight, temperature, humidity, petDetected } = req.body;
-
       const ref = db.collection("devices").doc(DEFAULT_DEVICE);
 
       await ref.set(
@@ -203,7 +198,6 @@ module.exports = {
         { merge: true }
       );
 
-      // store log entry
       await ref.collection("telemetry").add({
         bowlWeight: bowlWeight ?? null,
         temperature: temperature ?? null,
@@ -237,16 +231,13 @@ module.exports = {
     }
   },
 
-  // Log feeding event
+  // Log feeding
   logFeeding: async (req, res) => {
     try {
       const { pet, amount, source } = req.body;
 
-      if (!pet || !amount) {
-        return res
-          .status(400)
-          .json({ error: "pet and amount required" });
-      }
+      if (!pet || !amount)
+        return res.status(400).json({ error: "pet and amount required" });
 
       const ref = db.collection("devices").doc(DEFAULT_DEVICE);
 
@@ -257,15 +248,16 @@ module.exports = {
         time: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      const updates = {
-        [`${pet}.lastFeeding`]:
-          admin.firestore.FieldValue.serverTimestamp(),
-        [`${pet}.feedingActive`]: false,
-        catFeedingActive: false,
-        dogFeedingActive: false,
-      };
-
-      await ref.set(updates, { merge: true });
+      await ref.set(
+        {
+          [`${pet}.lastFeeding`]:
+            admin.firestore.FieldValue.serverTimestamp(),
+          [`${pet}.feedingActive`]: false,
+          catFeedingActive: false,
+          dogFeedingActive: false,
+        },
+        { merge: true }
+      );
 
       return res.json({ status: "feed_logged" });
     } catch (err) {
@@ -274,7 +266,7 @@ module.exports = {
     }
   },
 
-  // Read feeding logs
+  // Read logs
   getFeedLogs: async (req, res) => {
     try {
       const q = await db
@@ -285,9 +277,7 @@ module.exports = {
         .limit(200)
         .get();
 
-      const logs = q.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-      return res.json(logs);
+      return res.json(q.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: err.message });

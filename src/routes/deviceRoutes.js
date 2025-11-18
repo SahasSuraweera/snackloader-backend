@@ -1,35 +1,38 @@
-// src/routes/deviceRoutes.js
 const express = require("express");
 const router = express.Router();
 
 const deviceCtrl = require("../controllers/deviceController");
 const { verifyFirebaseIdToken } = require("../utils/authMiddleware");
 
-// Device registration (frontend)
-router.post("/register", verifyFirebaseIdToken, deviceCtrl.registerDevice);
+// Registration disabled
+// router.post("/register", verifyFirebaseIdToken, deviceCtrl.registerDevice);
 
-// Get device status
-router.get("/:id/status", verifyFirebaseIdToken, deviceCtrl.getDeviceStatus);
+// Status
+router.get("/status", verifyFirebaseIdToken, deviceCtrl.getDeviceStatus);
 
-// Update schedules/settings
-router.post("/:id/settings", verifyFirebaseIdToken, deviceCtrl.updateSettings);
+// Settings
+router.post("/settings", verifyFirebaseIdToken, deviceCtrl.updateSettings);
 
-// Manual feed
-router.post("/:id/feed-cat", verifyFirebaseIdToken, deviceCtrl.feedCat);
-router.post("/:id/feed-dog", verifyFirebaseIdToken, deviceCtrl.feedDog);
+// Manual feeds
+router.post("/feed-cat", verifyFirebaseIdToken, deviceCtrl.feedCat);
+router.post("/feed-dog", verifyFirebaseIdToken, deviceCtrl.feedDog);
 
-// Device polling for commands (device calls)
-router.get("/:id/commands", deviceCtrl.getCommands);
-router.post("/:id/commands/:cmdId/processed", deviceCtrl.markCommandProcessed);
+// Device command polling
+router.get("/commands", deviceCtrl.getCommands);
 
-// Telemetry & heartbeat from device
-router.post("/:id/telemetry", deviceCtrl.postTelemetry);
-router.post("/:id/heartbeat", deviceCtrl.heartbeat);
+// Mark command processed
+router.post("/commands/:cmdId/processed", deviceCtrl.markCommandProcessed);
 
-// Device logs feeding (after hardware performed feed)
-router.post("/:id/feed-log", deviceCtrl.logFeeding);
+// Telemetry (from PI)
+router.post("/telemetry", deviceCtrl.postTelemetry);
 
-// Frontend reads logs
-router.get("/:id/feed-logs", verifyFirebaseIdToken, deviceCtrl.getFeedLogs);
+// Heartbeat (from PI)
+router.post("/heartbeat", deviceCtrl.heartbeat);
+
+// Feeding log
+router.post("/feed-log", deviceCtrl.logFeeding);
+
+// Read feeding logs
+router.get("/feed-logs", verifyFirebaseIdToken, deviceCtrl.getFeedLogs);
 
 module.exports = router;
